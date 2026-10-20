@@ -242,15 +242,6 @@ private:
     void handleOutputEnabled(Output *output);
     void handleOutputDisabled(Output *output);
 
-    class LockScreenPresentationWatcher : public QObject
-    {
-    public:
-        LockScreenPresentationWatcher(WaylandServer *server);
-
-    private:
-        QSet<Output *> m_signaledOutputs;
-    };
-
     Display *m_display = nullptr;
     CompositorInterface *m_compositor = nullptr;
     SeatInterface *m_seat = nullptr;
