@@ -618,10 +618,6 @@ void WaylandServer::initScreenLocker()
 
     ScreenLocker::KSldApp::self()->setGreeterEnvironment(kwinApp()->processStartupEnvironment());
 
-    connect(ScreenLocker::KSldApp::self(), &ScreenLocker::KSldApp::aboutToLock, this, [this]() {
-        new LockScreenPresentationWatcher(this);
-    });
-
     connect(ScreenLocker::KSldApp::self(), &ScreenLocker::KSldApp::aboutToStartGreeter, this, [this]() {
         if (m_screenLockerClientConnection) {
             m_screenLockerClientConnection->destroy();
@@ -773,7 +769,7 @@ bool WaylandServer::isScreenLocked() const
     if (!kwinApp()->supportsLockScreen()) {
         return false;
     }
-    return ScreenLocker::KSldApp::self()->lockState() == ScreenLocker::KSldApp::Locked || ScreenLocker::KSldApp::self()->lockState() == ScreenLocker::KSldApp::AcquiringLock;
+    return ScreenLocker::KSldApp::self()->lockState() == ScreenLocker::KSldApp::Locked;
 #else
     return false;
 #endif
@@ -836,33 +832,7 @@ void WaylandServer::setRenderBackend(RenderBackend *backend)
     }
 }
 
-#if KWIN_BUILD_SCREENLOCKER
-WaylandServer::LockScreenPresentationWatcher::LockScreenPresentationWatcher(WaylandServer *server)
-{
-    connect(ScreenLocker::KSldApp::self(), &ScreenLocker::KSldApp::unlocked, this, [this] {
-        delete this;
-    });
-    connect(server, &WaylandServer::windowAdded, this, [this](Window *window) {
-        if (window->isLockScreen()) {
-            // only signal lockScreenShown once all outputs have been presented at least once
-            connect(window->output()->renderLoop(), &RenderLoop::framePresented, this, [this, windowGuard = QPointer(window)]() {
-                // window might be destroyed before a frame is presented, so it's wrapped in QPointer
-                if (windowGuard) {
-                    m_signaledOutputs << windowGuard->output();
-                    if (m_signaledOutputs.size() == workspace()->outputs().size()) {
-                        ScreenLocker::KSldApp::self()->lockScreenShown();
-                        delete this;
-                    }
-                }
-            });
-        }
-    });
-    QTimer::singleShot(1000, this, [this]() {
-        ScreenLocker::KSldApp::self()->lockScreenShown();
-        delete this;
-    });
-}
-#endif
+
 }
 
 #include "moc_wayland_server.cpp"
